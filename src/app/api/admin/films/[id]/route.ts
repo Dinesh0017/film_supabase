@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
 
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: RouteContext
 ) {
   const cookieStore = await cookies();
   const isAdmin = cookieStore.get("filmhub_admin")?.value === "true";
@@ -12,6 +16,9 @@ export async function POST(
   if (!isAdmin) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
+
+  // Await the params to get the dynamic film ID
+  const { id } = await context.params;
 
   const formData = await request.formData();
 
@@ -29,7 +36,7 @@ export async function POST(
   const { error } = await supabaseAdmin
     .from("films")
     .update(updatedFilm)
-    .eq("id", params.id);
+    .eq("id", id); // Used the awaited id here
 
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
